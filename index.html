@@ -1,0 +1,646 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>삼성동 점심지도</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+/* ===== 디자인 토큰 ===== */
+:root{
+  --ink:#1D2422; --muted:#5B6863; --faint:#8A9590; --paper:#FFFFFF; --paper-2:#F4F6F5; --line:#D9DFDC;
+  --accent:#D9481F; --accent-ink:#FFFFFF; --star:#F2A900; --star-off:#D5DBD8;
+  --shadow:0 6px 24px rgba(20,30,26,.16),0 1px 3px rgba(20,30,26,.12);
+  --c-kr:#C93D24; --c-cn:#D98A0B; --c-jp:#2D67A8; --c-ws:#2F8650; --c-bs:#CF4A84; --c-as:#0F8C86; --c-cf:#8A5A3B; --c-bar:#7547B0; --c-etc:#66726D;
+  --f-display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper-2);color:var(--ink);font-family:var(--f-body);font-size:14px;overflow:hidden}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+[hidden]{display:none!important}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+#app{height:100%;display:grid;grid-template-rows:auto 1fr;position:relative}
+.bar{background:var(--paper);border-bottom:1px solid var(--line);padding:10px max(16px,env(safe-area-inset-right)) 10px max(16px,env(safe-area-inset-left));display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;z-index:30;position:relative}
+.brand{display:flex;align-items:center;gap:10px;min-width:0;margin-right:auto}
+.brand-mark{width:30px;height:30px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:var(--accent-ink);flex:none}
+.brand-mark svg{width:18px;height:18px}
+.brand h1{font-family:var(--f-display);font-weight:400;font-size:21px;line-height:1.1;margin:0}
+.brand p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:7px 12px;font-weight:500;font-size:13px;line-height:1.2;white-space:nowrap;text-decoration:none;display:inline-flex;align-items:center;gap:4px}
+.btn:hover{background:var(--paper-2)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.danger{color:var(--c-kr);border-color:#E7B8AE}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.seg{display:flex}
+.seg .btn:first-child{border-radius:8px 0 0 8px}
+.seg .btn:last-child{border-radius:0 8px 8px 0;border-left:0}
+.more{position:relative}
+.more-menu{position:absolute;right:0;top:calc(100% + 6px);background:var(--paper);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow);padding:6px;display:grid;min-width:200px;z-index:50}
+.more-menu button{border:0;background:transparent;text-align:left;padding:9px 10px;border-radius:7px;font-size:13px}
+.more-menu button:hover{background:var(--paper-2)}
+.more-menu p{margin:4px 10px 6px;font-size:11.5px;color:var(--faint);line-height:1.5}
+.filters{display:flex;gap:6px;flex-wrap:wrap;width:100%}
+.filters:empty{display:none}
+.fchip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:4px 10px 4px 8px;font-size:12px;color:var(--muted)}
+.fchip i{width:9px;height:9px;border-radius:50%;background:var(--cc)}
+.fchip b{font-weight:600;color:var(--ink)}
+.fchip .n{font-variant-numeric:tabular-nums;color:var(--faint)}
+.fchip[aria-pressed="false"]{opacity:.45}
+.fchip[aria-pressed="false"] i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--cc)}
+
+.stage{position:relative;overflow:hidden}
+#map{position:absolute;inset:0}
+.homebtn{position:absolute;right:max(10px,env(safe-area-inset-right));bottom:calc(24px + env(safe-area-inset-bottom));z-index:5;width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--paper);box-shadow:var(--shadow);display:grid;place-items:center}
+.homebtn svg{width:19px;height:19px}
+
+/* ===== 지도 위 표시 ===== */
+.office{position:relative;width:26px;height:26px}
+.office .sq{position:absolute;inset:0;border-radius:7px;background:var(--ink);color:#fff;display:grid;place-items:center;box-shadow:0 0 0 3px #fff,var(--shadow)}
+.office .sq svg{width:15px;height:15px}
+.office .tag{position:absolute;left:34px;top:3px;background:var(--ink);color:#fff;font-size:11.5px;font-weight:600;padding:3px 8px;border-radius:6px;white-space:nowrap}
+
+.pin{display:flex;flex-direction:column;align-items:center;font-family:var(--f-body)}
+.pin .stem{width:2px;height:12px;background:var(--cc)}
+.pin .tip{width:10px;height:10px;border-radius:50%;background:var(--cc);box-shadow:0 0 0 2px #fff,0 1px 3px rgba(0,0,0,.35);margin-top:-1px}
+.chip{display:flex;align-items:center;gap:6px;background:var(--paper);border:1.5px solid var(--cc);border-radius:9px;padding:4px 9px 4px 7px;box-shadow:var(--shadow);white-space:nowrap;font-size:12.5px;line-height:1.2}
+.chip:hover{transform:translateY(-1px)}
+.chip .cat,.card .cat{font-size:11px;font-weight:600;color:#fff;background:var(--cc);border-radius:5px;padding:2px 6px}
+.chip b{font-weight:700;max-width:12em;overflow:hidden;text-overflow:ellipsis}
+.chip .sc{font-weight:600;font-variant-numeric:tabular-nums}
+.chip .sc::before{content:"★";color:var(--star);margin-right:2px}
+.chip .sc.none::before{color:var(--star-off)}
+
+.card{width:min(300px,80vw);background:var(--paper);border-radius:12px;box-shadow:var(--shadow);border-top:4px solid var(--cc);cursor:auto;white-space:normal;text-align:left}
+.card header{display:grid;grid-template-columns:1fr auto;gap:4px 8px;padding:10px 10px 8px 14px;border-bottom:1px solid var(--line)}
+.card h3{margin:0;font-size:16px;font-weight:700;line-height:1.3;word-break:keep-all;overflow-wrap:anywhere}
+.card .hmeta{grid-column:1/2;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.card .min{grid-row:1/3;grid-column:2;align-self:start;width:28px;height:28px;border-radius:7px;border:1px solid var(--line);background:var(--paper-2);display:grid;place-items:center;color:var(--muted)}
+.card .min:hover{color:var(--ink)}
+.card .min svg{width:14px;height:14px}
+.card .body{padding:10px 14px 12px;display:grid;gap:12px;max-height:min(42vh,360px);overflow:auto}
+.sec h4{margin:0 0 5px;font-size:11px;font-weight:600;letter-spacing:.06em;color:var(--faint)}
+.menu{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.menu li{display:flex;gap:8px;align-items:baseline;font-size:13px}
+.menu li .nm{flex:0 1 auto;min-width:0;overflow-wrap:anywhere}
+.menu li .lead{flex:1;border-bottom:1px dotted var(--line);transform:translateY(-3px);min-width:8px}
+.menu li .pr{font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.scores{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:center;font-size:12.5px}
+.scores .bar5{display:flex;gap:3px}
+.scores .bar5 i{flex:1;height:6px;border-radius:3px;background:var(--star-off)}
+.scores .bar5 i.on{background:var(--cc)}
+.scores .v{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
+.note{margin:0;font-size:13px;line-height:1.6;white-space:pre-wrap;overflow-wrap:anywhere}
+.meta{font-size:12px;color:var(--muted);display:grid;gap:2px}
+.meta a{color:var(--c-jp);font-weight:600}
+.cardact{display:flex;gap:6px;justify-content:flex-end;border-top:1px solid var(--line);padding:8px 10px}
+.confirm{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end;font-size:12.5px;color:var(--c-kr);font-weight:600}
+.stars{position:relative;display:inline-block;font-size:14px;letter-spacing:1px;color:var(--star-off);line-height:1}
+.stars .on{position:absolute;inset:0 auto 0 0;overflow:hidden;color:var(--star);white-space:nowrap}
+.rnum{font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink)}
+.hint{font-size:12px;color:var(--faint);margin:0;line-height:1.5}
+
+/* ===== 안내 상자 ===== */
+.notice{position:absolute;left:50%;top:18px;transform:translateX(-50%);width:min(420px,calc(100% - 32px));background:var(--paper);border-radius:12px;box-shadow:var(--shadow);padding:14px 16px;display:grid;gap:8px;z-index:6}
+.notice h2{margin:0;font-size:15px}
+.notice p,.notice li{margin:0;color:var(--muted);font-size:13px;line-height:1.6}
+.notice ol{margin:0;padding-left:18px;display:grid;gap:4px}
+.notice code{background:var(--paper-2);padding:1px 5px;border-radius:4px;font-size:12px;color:var(--ink)}
+.notice.err{border-top:4px solid var(--c-kr)}
+.toast{position:absolute;left:50%;bottom:calc(28px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 14px;border-radius:9px;font-size:13px;z-index:60;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+.maphint{position:absolute;left:50%;top:12px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:7px 12px;border-radius:9px;font-size:12.5px;z-index:7;box-shadow:var(--shadow);white-space:nowrap}
+
+/* ===== 입력 패널 ===== */
+.panel{position:absolute;top:0;right:0;bottom:0;width:min(390px,100%);background:var(--paper);border-left:1px solid var(--line);box-shadow:var(--shadow);z-index:20;display:flex;flex-direction:column;padding-bottom:env(safe-area-inset-bottom)}
+.panel-h{display:flex;align-items:center;justify-content:space-between;padding:12px 12px 10px 18px;border-bottom:1px solid var(--line)}
+.panel-h h2{margin:0;font-size:16px;font-weight:700}
+.panel-b{flex:1;overflow:auto;padding:14px 18px 18px;display:grid;gap:18px;align-content:start}
+.panel-f{display:flex;gap:8px;justify-content:flex-end;padding:12px 18px;border-top:1px solid var(--line)}
+.fld{display:grid;gap:6px}
+.fld>label,.fld>.lab{font-size:12px;font-weight:600;color:var(--muted);letter-spacing:.02em}
+.fld .req{color:var(--accent)}
+.in{width:100%;border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:8px 10px;min-width:0}
+.in:focus{outline:2px solid var(--accent);outline-offset:-1px;border-color:transparent}
+textarea.in{resize:vertical;min-height:84px;line-height:1.5}
+.row{display:flex;gap:6px;align-items:center}
+.row .in{flex:1}
+.locbox{display:grid;gap:10px;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--paper-2)}
+.locbox .or{font-size:11.5px;color:var(--faint);text-align:center}
+.results{display:grid;gap:4px;max-height:240px;overflow:auto}
+.results button{border:1px solid var(--line);background:var(--paper);border-radius:8px;padding:7px 10px;text-align:left;display:grid;gap:2px}
+.results button:hover{border-color:var(--accent)}
+.results b{font-size:13px}
+.results span{font-size:11.5px;color:var(--muted)}
+.geo{font-size:12.5px;line-height:1.5;padding:8px 10px;border-radius:8px;background:var(--paper);border:1px solid var(--line);color:var(--muted)}
+.geo b{color:var(--ink)}
+.geo.ok b{color:var(--c-ws)}
+.geo.err b{color:var(--c-kr)}
+.cats{display:flex;flex-wrap:wrap;gap:6px}
+.cats button{border:1px solid var(--line);background:var(--paper);border-radius:999px;padding:5px 11px;font-size:13px;display:flex;align-items:center;gap:6px}
+.cats button i{width:9px;height:9px;border-radius:50%;background:var(--cc)}
+.cats button[aria-pressed="true"]{background:var(--cc);border-color:var(--cc);color:#fff;font-weight:600}
+.cats button[aria-pressed="true"] i{background:#fff}
+.rate{display:flex;align-items:center;gap:10px}
+.rstars{position:relative;font-size:28px;letter-spacing:2px;color:var(--star-off);line-height:1;cursor:pointer;touch-action:none;user-select:none}
+.rstars .on{position:absolute;inset:0 auto 0 0;overflow:hidden;color:var(--star);white-space:nowrap;pointer-events:none}
+.rate .rv{font-variant-numeric:tabular-nums;font-weight:700;font-size:16px;min-width:2.4em}
+.menus{display:grid;gap:6px}
+.mrow{display:grid;grid-template-columns:1fr 110px 30px;gap:6px;align-items:center}
+.mrow .pw{position:relative}
+.mrow .pw .in{padding-right:24px;text-align:right;font-variant-numeric:tabular-nums}
+.mrow .pw span{position:absolute;right:9px;top:50%;transform:translateY(-50%);color:var(--faint);font-size:12px}
+.mrow .x{width:30px;height:30px;border:0;background:transparent;color:var(--faint);border-radius:6px}
+.mrow .x:hover{background:var(--paper-2);color:var(--ink)}
+.subs{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center}
+.subs .lab2{font-size:13px}
+.dots{display:flex;gap:5px}
+.dots button{width:28px;height:22px;border-radius:6px;border:1px solid var(--line);background:var(--paper);font-size:11px;color:var(--faint);font-variant-numeric:tabular-nums}
+.dots button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+
+@media (max-width:640px){
+  .brand h1{font-size:19px}
+  .panel{top:auto;width:100%;height:min(80%,720px);border-left:0;border-top:1px solid var(--line);border-radius:14px 14px 0 0}
+  .mrow{grid-template-columns:1fr 96px 30px}
+  .seg .btn{padding:7px 10px}
+}
+@media (prefers-reduced-motion:no-preference){
+  .panel{animation:slide .18s ease-out}
+  @keyframes slide{from{transform:translateX(16px);opacity:.6}}
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <header class="bar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3v8a2 2 0 0 0 2 2v8"/><path d="M5 3v5M9 3v5"/><path d="M17 21V3c-2 1-3 4-3 8h3"/></svg></span>
+      <div><h1>삼성동 점심지도</h1><p>삼성로 524 주변 · <span id="count">불러오는 중</span></p></div>
+    </div>
+    <div class="actions">
+      <button id="btnAdd" class="btn primary" type="button" disabled>+ 식당 추가</button>
+      <div class="seg" role="group" aria-label="세부 설명">
+        <button id="btnOpenAll" class="btn" type="button">모두 펼치기</button>
+        <button id="btnCloseAll" class="btn" type="button">모두 접기</button>
+      </div>
+      <div class="more">
+        <button id="btnMore" class="btn" type="button" aria-expanded="false" aria-controls="moreMenu">백업</button>
+        <div class="more-menu" id="moreMenu" hidden>
+          <button type="button" id="btnExport">백업 파일로 저장</button>
+          <button type="button" id="btnImport">백업 파일 불러오기</button>
+          <p>기록은 지금 쓰는 브라우저에만 저장돼요. 다른 기기로 옮기거나 브라우저 기록을 지우기 전에 백업해 두세요.</p>
+        </div>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
+    </div>
+    <div class="filters" id="filters" aria-label="음식 유형 필터"></div>
+  </header>
+
+  <main class="stage" id="stage">
+    <div id="map" aria-label="삼성동 일대 지도"></div>
+    <div class="notice" id="notice" hidden></div>
+    <div class="maphint" id="mapHint" hidden>지도를 누르면 그 자리로 핀이 옮겨져요</div>
+    <button class="homebtn" id="btnHome" type="button" aria-label="회사 위치로" title="회사 위치로"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.2" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg></button>
+    <div class="toast" id="toast" hidden role="status"></div>
+  </main>
+
+  <aside class="panel" id="panel" hidden aria-labelledby="panelTitle">
+    <div class="panel-h"><h2 id="panelTitle">식당 추가</h2><button class="btn ghost" type="button" id="panelClose">닫기</button></div>
+    <form class="panel-b" id="form" autocomplete="off" onsubmit="return false">
+      <div class="fld">
+        <span class="lab">위치 <span class="req">*</span></span>
+        <div class="locbox">
+          <div class="row"><input class="in" id="fSearch" placeholder="식당 이름으로 찾기 (예: 광양불고기)" enterkeyhint="search"><button class="btn" type="button" id="btnSearch">검색</button></div>
+          <div class="results" id="results" hidden></div>
+          <div class="or">또는 주소로 찾기</div>
+          <div class="row"><input class="in" id="fAddr" placeholder="예: 삼성로 529" enterkeyhint="search"><button class="btn" type="button" id="btnGeo">찾기</button></div>
+          <div class="geo" id="geoMsg">식당 이름이나 주소로 찾으면 지도에 핀이 꽂혀요. 지도를 눌러서 정하거나 핀을 끌어서 옮길 수도 있어요.</div>
+        </div>
+      </div>
+      <div class="fld">
+        <label for="fName">식당 이름 <span class="req">*</span></label>
+        <input class="in" id="fName" placeholder="예: 광양불고기" maxlength="40">
+      </div>
+      <div class="fld">
+        <span class="lab" id="catLab">음식 유형</span>
+        <div class="cats" id="fCats" role="group" aria-labelledby="catLab"></div>
+      </div>
+      <div class="fld">
+        <span class="lab" id="rateLab">별점</span>
+        <div class="rate">
+          <div class="rstars" id="fRate" role="slider" tabindex="0" aria-labelledby="rateLab" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0">★★★★★<span class="on" style="width:0%">★★★★★</span></div>
+          <span class="rv" id="fRateV">–</span>
+          <button class="btn ghost" type="button" id="fRateClear">지우기</button>
+        </div>
+      </div>
+      <div class="fld">
+        <span class="lab">대표 메뉴 · 가격</span>
+        <div class="menus" id="fMenus"></div>
+        <div><button class="btn" type="button" id="btnMenuAdd">+ 메뉴 추가</button></div>
+      </div>
+      <div class="fld">
+        <span class="lab">세부 평가</span>
+        <div class="subs" id="fSubs"></div>
+      </div>
+      <div class="fld">
+        <label for="fNote">설명 · 메모</label>
+        <textarea class="in" id="fNote" placeholder="예: 점심 특선 고기 양 넉넉함. 12시 전에 가면 웨이팅 없음."></textarea>
+      </div>
+      <div class="fld">
+        <label for="fVisit">방문일</label>
+        <input class="in" id="fVisit" type="date">
+      </div>
+    </form>
+    <div class="panel-f"><button class="btn" type="button" id="btnCancel">취소</button><button class="btn primary" type="button" id="btnSave" disabled>추가</button></div>
+  </aside>
+</div>
+
+<script>
+(() => {
+'use strict';
+
+/* ===== 설정 ===== */
+const KAKAO_JS_KEY = '48f0d1d552b2569911acbc1ad7c12d84';
+const OFFICE = { lat: 37.50897, lng: 127.05591, label: '우리 회사 · 삼성로 524' };
+const STORE_KEY = 'samsung-lunchmap-v1';
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const won = n => (Number(n) || 0).toLocaleString('ko-KR') + '원';
+const CATS = [['kr','한식'],['cn','중식'],['jp','일식'],['ws','양식'],['bs','분식'],['as','아시안'],['cf','카페·디저트'],['bar','술집'],['etc','기타']];
+const CAT_NAME = Object.fromEntries(CATS);
+const SUBS = [['taste','맛'],['mood','분위기'],['value','가성비'],['service','서비스']];
+const catKey = c => CAT_NAME[c] ? c : 'etc';
+
+function distM(a, b) {
+  const R = 6371000, t = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * t, dLng = (b.lng - a.lng) * t;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * t) * Math.cos(b.lat * t) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+let tt = 0;
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 3200); }
+
+/* ===== 저장 (브라우저) ===== */
+const items = new Map();
+const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } };
+for (const r of lsGet(STORE_KEY, [])) if (r && r.id) items.set(r.id, r);
+const persist = () => { if (!lsSet(STORE_KEY, [...items.values()])) toast('브라우저에 저장하지 못했어요. 시크릿 창이면 일반 창에서 열어 주세요.'); };
+const openSet = new Set(lsGet(STORE_KEY + '-open', []));
+const saveOpen = () => lsSet(STORE_KEY + '-open', [...openSet]);
+const hiddenCats = new Set(lsGet(STORE_KEY + '-hidden', []));
+
+/* ===== 카카오 SDK 불러오기 ===== */
+function showError(kind) {
+  const n = $('#notice'); n.className = 'notice err'; n.hidden = false;
+  const local = location.protocol === 'file:';
+  n.innerHTML = '<h2>카카오 지도를 불러오지 못했어요</h2>' + (local
+    ? '<p>파일을 컴퓨터에서 바로 열면(주소창이 <code>file://</code>로 시작) 카카오 지도가 작동하지 않아요. Netlify 등에 올린 주소로 열어 주세요.</p>'
+    : '<p>아래를 차례로 확인해 주세요.</p><ol>' +
+      '<li>카카오 개발자센터에서 <b>카카오맵 사용 설정</b>이 ON인지</li>' +
+      '<li><b>JavaScript SDK 도메인</b>에 지금 주소 <code>' + esc(location.origin) + '</code>가 정확히 등록돼 있는지 (끝에 / 없이)</li>' +
+      '<li>설정을 바꾼 직후라면 몇 분 뒤 새로고침</li></ol>') +
+    (kind ? '<p class="hint">오류 종류: ' + esc(kind) + '</p>' : '');
+}
+const sdk = document.createElement('script');
+sdk.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + KAKAO_JS_KEY + '&libraries=services&autoload=false';
+sdk.onerror = () => showError('SDK 스크립트 로드 실패');
+sdk.onload = () => {
+  if (!window.kakao || !kakao.maps || !kakao.maps.load) { showError('SDK 응답 이상'); return; }
+  kakao.maps.load(init);
+};
+document.head.appendChild(sdk);
+
+/* ===== 지도 앱 본체 ===== */
+function init() {
+  const K = kakao.maps;
+  const officeLL = new K.LatLng(OFFICE.lat, OFFICE.lng);
+  const map = new K.Map($('#map'), { center: officeLL, level: 4 });
+  map.addControl(new K.ZoomControl(), K.ControlPosition.RIGHT);
+  const geocoder = new K.services.Geocoder();
+  const places = new K.services.Places();
+  $('#btnHome').onclick = () => { map.setLevel(4); map.panTo(officeLL); };
+
+  // 회사 표시
+  const officeEl = document.createElement('div');
+  officeEl.className = 'office';
+  officeEl.innerHTML = '<span class="sq"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M5 21V5l8-2v18M13 9l6 2v10M3 21h18"/><path d="M8 8h2M8 12h2M8 16h2"/></svg></span><span class="tag">' + esc(OFFICE.label) + '</span>';
+  new K.CustomOverlay({ map, position: officeLL, content: officeEl, xAnchor: 0.5, yAnchor: 0.5, zIndex: 1 });
+
+  /* ----- 식당 핀 ----- */
+  const pins = new Map(); let zTop = 100;
+  const MIN_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 12h12"/></svg>';
+  const starsHTML = v => '<span class="stars" aria-label="별점 ' + v + '점">★★★★★<span class="on" style="width:' + (v / 5 * 100) + '%">★★★★★</span></span>';
+
+  function chipHTML(r) {
+    return '<button class="chip" type="button" data-act="open" aria-label="' + esc(r.name) + ' 세부 설명 펼치기"><span class="cat">' + CAT_NAME[catKey(r.cat)] + '</span><b>' + esc(r.name) + '</b><span class="sc' + (r.rating ? '' : ' none') + '">' + (r.rating ? Number(r.rating).toFixed(1) : '–') + '</span></button>';
+  }
+  function cardHTML(r) {
+    const menus = (r.menus || []).filter(m => m.name);
+    const subs = SUBS.filter(([k]) => r.scores && r.scores[k]);
+    let h = '<section class="card" aria-label="' + esc(r.name) + ' 세부 설명"><header><h3>' + esc(r.name) + '</h3>' +
+      '<button class="min" type="button" data-act="min" aria-label="최소화" title="최소화">' + MIN_ICON + '</button>' +
+      '<div class="hmeta"><span class="cat">' + CAT_NAME[catKey(r.cat)] + '</span>' + (r.rating ? starsHTML(r.rating) + '<span class="rnum">' + Number(r.rating).toFixed(1) + '</span>' : '<span>별점 없음</span>') + '</div></header><div class="body">';
+    if (menus.length) h += '<div class="sec"><h4>대표 메뉴</h4><ul class="menu">' + menus.map(m => '<li><span class="nm">' + esc(m.name) + '</span><span class="lead"></span><span class="pr">' + (m.price ? won(m.price) : '–') + '</span></li>').join('') + '</ul></div>';
+    if (subs.length) h += '<div class="sec"><h4>세부 평가</h4><div class="scores">' + subs.map(([k, n]) => '<span>' + n + '</span><span class="bar5">' + [1, 2, 3, 4, 5].map(i => '<i' + (i <= r.scores[k] ? ' class="on"' : '') + '></i>').join('') + '</span><span class="v">' + r.scores[k] + '/5</span>').join('') + '</div></div>';
+    if (r.note) h += '<div class="sec"><h4>설명</h4><p class="note">' + esc(r.note) + '</p></div>';
+    const meta = [];
+    if (r.address) meta.push('주소 · ' + esc(r.address));
+    if (r.phone) meta.push('전화 · ' + esc(r.phone));
+    if (r.visited) meta.push('방문 · ' + esc(r.visited.replace(/-/g, '.')));
+    const d = distM(OFFICE, r);
+    meta.push('회사에서 약 ' + Math.round(d / 10) * 10 + 'm · 걸어서 ' + Math.max(1, Math.round(d * 1.3 / 70)) + '분 남짓');
+    if (r.placeUrl && /^https:\/\/place\.map\.kakao\.com\//.test(r.placeUrl)) meta.push('<a href="' + esc(r.placeUrl) + '" target="_blank" rel="noopener">카카오맵에서 보기 ↗</a>');
+    h += '<div class="meta">' + meta.map(m => '<span>' + m + '</span>').join('') + '</div>';
+    if (!menus.length && !subs.length && !r.note) h += '<p class="hint">아직 메뉴나 설명이 없어요. ‘수정’에서 채울 수 있어요.</p>';
+    h += '</div><div class="cardact"><button class="btn" type="button" data-act="edit">수정</button><button class="btn danger" type="button" data-act="del">삭제</button></div></section>';
+    return h;
+  }
+  function renderPin(p) {
+    const r = items.get(p.id);
+    p.el.style.setProperty('--cc', 'var(--c-' + catKey(r.cat) + ')');
+    p.el.innerHTML = (openSet.has(p.id) ? cardHTML(r) : chipHTML(r)) + '<span class="stem"></span><span class="tip"></span>';
+    p.ov.setPosition(new K.LatLng(r.lat, r.lng));
+    p.ov.setContent(p.el);
+    p.ov.setMap(hiddenCats.has(catKey(r.cat)) ? null : map);
+  }
+  function front(p) { p.ov.setZIndex(++zTop); }
+
+  function makePin(id) {
+    const el = document.createElement('div'); el.className = 'pin'; el.dataset.id = id;
+    // 카드 안에서 누르거나 스크롤할 때 지도가 함께 움직이지 않게
+    ['mousedown', 'touchstart', 'pointerdown', 'dblclick', 'wheel', 'mousewheel', 'DOMMouseScroll'].forEach(ev =>
+      el.addEventListener(ev, e => { if (ev.includes('wheel') || ev === 'DOMMouseScroll') { if (e.target.closest('.card')) e.stopPropagation(); } else e.stopPropagation(); }, { passive: true }));
+    el.addEventListener('click', e => onPinClick(e, id));
+    const r = items.get(id);
+    const ov = new K.CustomOverlay({ position: new K.LatLng(r.lat, r.lng), content: el, xAnchor: 0.5, yAnchor: 1, zIndex: 10, clickable: true });
+    return { id, el, ov };
+  }
+  function onPinClick(e, id) {
+    const p = pins.get(id); const a = e.target.closest('[data-act]'); const act = a && a.dataset.act;
+    if (act === 'open') { openSet.add(id); saveOpen(); renderPin(p); front(p); return; }
+    if (act === 'min') { openSet.delete(id); saveOpen(); renderPin(p); return; }
+    if (act === 'edit') { openForm(id); return; }
+    if (act === 'del') {
+      p.el.querySelector('.cardact').innerHTML = '<div class="confirm"><span>이 식당을 지울까요?</span><button class="btn" type="button" data-act="keep">취소</button><button class="btn primary" type="button" data-act="delok">삭제</button></div>';
+      return;
+    }
+    if (act === 'keep') { renderPin(p); return; }
+    if (act === 'delok') {
+      const name = items.get(id).name;
+      items.delete(id); openSet.delete(id); persist(); saveOpen(); renderAll();
+      toast('‘' + name + '’을(를) 지웠어요.');
+      return;
+    }
+    if (e.target.closest('.card')) front(p);
+  }
+
+  function renderFilters() {
+    const counts = {}; for (const r of items.values()) { const k = catKey(r.cat); counts[k] = (counts[k] || 0) + 1; }
+    $('#filters').innerHTML = CATS.filter(([k]) => counts[k]).map(([k, n]) =>
+      '<button class="fchip" type="button" data-cat="' + k + '" aria-pressed="' + !hiddenCats.has(k) + '" style="--cc:var(--c-' + k + ')"><i></i><b>' + n + '</b><span class="n">' + counts[k] + '</span></button>').join('');
+  }
+  function renderAll() {
+    for (const [id, p] of pins) if (!items.has(id)) { p.ov.setMap(null); pins.delete(id); }
+    for (const r of items.values()) {
+      let p = pins.get(r.id);
+      if (!p) { p = makePin(r.id); pins.set(r.id, p); }
+      renderPin(p);
+    }
+    $('#count').textContent = '기록 ' + items.size + '곳';
+    $('#btnOpenAll').disabled = $('#btnCloseAll').disabled = items.size === 0;
+    renderFilters();
+    const n = $('#notice');
+    if (items.size === 0 && $('#panel').hidden) {
+      n.className = 'notice'; n.hidden = false;
+      n.innerHTML = '<h2>아직 기록한 식당이 없어요</h2><p>‘식당 추가’를 누르고 식당 이름(예: 광양불고기)이나 주소(예: 삼성로 529)로 찾으면 지도에 위치가 표시돼요.</p><div><button class="btn primary" type="button" data-act="add">첫 식당 추가하기</button></div>';
+    } else if (!n.classList.contains('err')) n.hidden = true;
+  }
+  $('#notice').addEventListener('click', e => { if (e.target.closest('[data-act="add"]')) openForm(null); });
+  $('#filters').addEventListener('click', e => {
+    const b = e.target.closest('.fchip'); if (!b) return;
+    const k = b.dataset.cat; hiddenCats.has(k) ? hiddenCats.delete(k) : hiddenCats.add(k);
+    lsSet(STORE_KEY + '-hidden', [...hiddenCats]); renderAll();
+  });
+  $('#btnOpenAll').onclick = () => { for (const r of items.values()) if (!hiddenCats.has(catKey(r.cat))) openSet.add(r.id); saveOpen(); renderAll(); };
+  $('#btnCloseAll').onclick = () => { openSet.clear(); saveOpen(); renderAll(); };
+
+  /* ----- 새 식당 위치 핀 (드래그 가능) ----- */
+  let draft = null;
+  const draftMarker = new K.Marker({ draggable: true, zIndex: 999 });
+  function setDraft(lat, lng, opts = {}) {
+    draft = { lat, lng };
+    const ll = new K.LatLng(lat, lng);
+    draftMarker.setPosition(ll); draftMarker.setMap(map);
+    if (opts.pan !== false) map.panTo(ll);
+    if (opts.reverse) reverseFill(lat, lng);
+    validate();
+  }
+  function clearDraft() { draft = null; draftMarker.setMap(null); }
+  K.event.addListener(draftMarker, 'dragend', () => {
+    const ll = draftMarker.getPosition(); setDraft(ll.getLat(), ll.getLng(), { pan: false, reverse: true });
+  });
+  K.event.addListener(map, 'click', e => {
+    if ($('#panel').hidden) return;
+    setDraft(e.latLng.getLat(), e.latLng.getLng(), { pan: false, reverse: true });
+  });
+  function reverseFill(lat, lng) {
+    geocoder.coord2Address(lng, lat, (res, status) => {
+      if (status !== K.services.Status.OK || !res[0]) { geoMsg('', '<b>위치를 정했어요.</b> 이 자리의 주소는 찾지 못했어요.'); return; }
+      const a = res[0].road_address ? res[0].road_address.address_name : res[0].address.address_name;
+      $('#fAddr').value = a; pending.placeUrl = ''; pending.phone = '';
+      geoMsg('ok', '<b>위치를 정했어요.</b> ' + esc(a));
+    });
+  }
+
+  /* ----- 검색 ----- */
+  const geoMsg = (cls, html) => { const g = $('#geoMsg'); g.className = 'geo ' + cls; g.innerHTML = html; };
+  let pending = { placeUrl: '', phone: '' };
+  function guessCat(p) {
+    const c = (p.category_name || '');
+    if (p.category_group_code === 'CE7' || /카페|디저트|제과|베이커리/.test(c)) return 'cf';
+    if (/한식/.test(c)) return 'kr';
+    if (/중식/.test(c)) return 'cn';
+    if (/일식/.test(c)) return 'jp';
+    if (/분식|간식/.test(c)) return 'bs';
+    if (/아시아음식|베트남|태국|인도/.test(c)) return 'as';
+    if (/양식|패스트푸드|이탈리안|피자|햄버거|스테이크/.test(c)) return 'ws';
+    if (/술집|호프|이자카야|와인/.test(c)) return 'bar';
+    return 'etc';
+  }
+  function doSearch() {
+    const q = $('#fSearch').value.trim(); const box = $('#results');
+    if (!q) { geoMsg('err', '<b>검색어를 넣어 주세요.</b>'); return; }
+    places.keywordSearch(q, (data, status) => {
+      box.hidden = false;
+      if (status !== K.services.Status.OK || !data.length) { box.innerHTML = '<p class="hint">‘' + esc(q) + '’ 검색 결과가 없어요. 주소로 찾거나 지도를 눌러 주세요.</p>'; return; }
+      box.innerHTML = data.slice(0, 10).map((p, i) => {
+        const d = distM(OFFICE, { lat: +p.y, lng: +p.x });
+        return '<button type="button" data-i="' + i + '"><b>' + esc(p.place_name) + '</b><span>' + esc((p.category_name || '').split('>').pop().trim()) + ' · ' + esc(p.road_address_name || p.address_name) + ' · ' + (d < 1000 ? Math.round(d) + 'm' : (d / 1000).toFixed(1) + 'km') + '</span></button>';
+      }).join('');
+      box.onclick = e => {
+        const b = e.target.closest('button[data-i]'); if (!b) return;
+        const p = data[+b.dataset.i];
+        $('#fName').value = p.place_name;
+        $('#fAddr').value = p.road_address_name || p.address_name;
+        fCat = guessCat(p); syncCats();
+        pending = { placeUrl: p.place_url || '', phone: p.phone || '' };
+        setDraft(+p.y, +p.x);
+        box.hidden = true;
+        geoMsg('ok', '<b>‘' + esc(p.place_name) + '’ 위치에 핀을 꽂았어요.</b> 이름과 음식 유형을 자동으로 채웠으니 확인해 주세요.');
+      };
+    }, { location: officeLL, radius: 3000 });
+  }
+  $('#btnSearch').onclick = doSearch;
+  $('#fSearch').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doSearch(); } });
+
+  function doGeocode() {
+    const q = $('#fAddr').value.trim();
+    if (!q) { geoMsg('err', '<b>주소를 먼저 넣어 주세요.</b>'); return; }
+    const query = /서울|강남/.test(q) ? q : '서울 강남구 ' + q;
+    geocoder.addressSearch(query, (res, status) => {
+      if (status !== K.services.Status.OK || !res.length) {
+        geocoder.addressSearch(q, (res2, st2) => {
+          if (st2 !== K.services.Status.OK || !res2.length) { geoMsg('err', '<b>주소를 찾지 못했어요.</b> 도로명(예: 삼성로 529)으로 다시 넣거나 지도를 직접 눌러 주세요.'); return; }
+          applyAddr(res2[0]);
+        });
+        return;
+      }
+      applyAddr(res[0]);
+    });
+  }
+  function applyAddr(a) {
+    const name = a.road_address ? a.road_address.address_name : a.address_name;
+    $('#fAddr').value = name; pending = { placeUrl: '', phone: '' };
+    setDraft(+a.y, +a.x);
+    geoMsg('ok', '<b>찾았어요.</b> ' + esc(name) + ' 위치에 핀을 꽂았어요. 핀을 끌어서 건물 입구 쪽으로 옮길 수 있어요.');
+  }
+  $('#btnGeo').onclick = doGeocode;
+  $('#fAddr').addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); doGeocode(); } });
+
+  /* ----- 입력 폼 ----- */
+  let editId = null, fRating = 0, fCat = 'kr', fScores = {};
+  $('#fCats').innerHTML = CATS.map(([k, n]) => '<button type="button" data-cat="' + k + '" aria-pressed="false" style="--cc:var(--c-' + k + ')"><i></i>' + n + '</button>').join('');
+  $('#fCats').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; fCat = b.dataset.cat; syncCats(); });
+  function syncCats() { $('#fCats').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', b.dataset.cat === fCat)); }
+
+  $('#fSubs').innerHTML = SUBS.map(([k, n]) => '<span class="lab2">' + n + '</span><div class="dots" data-k="' + k + '" role="group" aria-label="' + n + ' 점수">' + [1, 2, 3, 4, 5].map(i => '<button type="button" data-v="' + i + '" aria-label="' + n + ' ' + i + '점">' + i + '</button>').join('') + '</div>').join('');
+  $('#fSubs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; const k = b.parentElement.dataset.k, v = +b.dataset.v; fScores[k] = fScores[k] === v ? 0 : v; syncSubs(); });
+  function syncSubs() { $('#fSubs').querySelectorAll('.dots').forEach(d => d.querySelectorAll('button').forEach(b => b.classList.toggle('on', +b.dataset.v <= (fScores[d.dataset.k] || 0)))); }
+
+  const rateEl = $('#fRate');
+  function setRate(v) { fRating = Math.max(0, Math.min(5, v)); rateEl.querySelector('.on').style.width = (fRating / 5 * 100) + '%'; rateEl.setAttribute('aria-valuenow', fRating); $('#fRateV').textContent = fRating ? fRating.toFixed(1) : '–'; }
+  const rateFromX = e => { const r = rateEl.getBoundingClientRect(); return Math.max(0.5, Math.ceil(((e.clientX - r.left) / r.width) * 10) / 2); };
+  let rateDrag = false;
+  rateEl.addEventListener('pointerdown', e => { rateDrag = true; rateEl.setPointerCapture(e.pointerId); setRate(rateFromX(e)); });
+  rateEl.addEventListener('pointermove', e => { if (rateDrag) setRate(rateFromX(e)); });
+  rateEl.addEventListener('pointerup', () => rateDrag = false);
+  rateEl.addEventListener('keydown', e => {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowUp') { setRate(fRating + 0.5); e.preventDefault(); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') { setRate(fRating - 0.5); e.preventDefault(); }
+  });
+  $('#fRateClear').onclick = () => setRate(0);
+
+  function addMenuRow(name = '', price = '') {
+    const d = document.createElement('div'); d.className = 'mrow';
+    d.innerHTML = '<input class="in mn" placeholder="메뉴 이름" maxlength="30" aria-label="메뉴 이름"><div class="pw"><input class="in mp" inputmode="numeric" placeholder="9,000" aria-label="가격"><span>원</span></div><button class="x" type="button" aria-label="메뉴 삭제">✕</button>';
+    d.querySelector('.mn').value = name;
+    d.querySelector('.mp').value = price ? Number(price).toLocaleString('ko-KR') : '';
+    d.querySelector('.x').onclick = () => { d.remove(); if (!$('#fMenus').children.length) addMenuRow(); };
+    d.querySelector('.mp').addEventListener('input', ev => { const n = ev.target.value.replace(/[^0-9]/g, ''); ev.target.value = n ? Number(n).toLocaleString('ko-KR') : ''; });
+    $('#fMenus').appendChild(d);
+  }
+  $('#btnMenuAdd').onclick = () => { addMenuRow(); $('#fMenus').lastElementChild.querySelector('.mn').focus(); };
+
+  function validate() { $('#btnSave').disabled = !($('#fName').value.trim() && draft); }
+  $('#fName').addEventListener('input', validate);
+
+  function openForm(id) {
+    editId = id || null; const r = id ? items.get(id) : null;
+    $('#panelTitle').textContent = r ? '식당 수정' : '식당 추가';
+    $('#btnSave').textContent = r ? '저장' : '추가';
+    $('#fSearch').value = ''; $('#results').hidden = true;
+    $('#fAddr').value = r ? r.address || '' : '';
+    $('#fName').value = r ? r.name : '';
+    fCat = r ? catKey(r.cat) : 'kr'; syncCats();
+    setRate(r ? r.rating || 0 : 0);
+    fScores = r ? { ...(r.scores || {}) } : {}; syncSubs();
+    $('#fNote').value = r ? r.note || '' : '';
+    $('#fVisit').value = r ? r.visited || '' : '';
+    $('#fMenus').innerHTML = '';
+    ((r && r.menus && r.menus.length) ? r.menus : [{}]).forEach(m => addMenuRow(m.name || '', m.price || ''));
+    pending = { placeUrl: r ? r.placeUrl || '' : '', phone: r ? r.phone || '' : '' };
+    $('#panel').hidden = false; $('#mapHint').hidden = false; $('#moreMenu').hidden = true;
+    if (!$('#notice').classList.contains('err')) $('#notice').hidden = true;
+    if (r) { setDraft(r.lat, r.lng); geoMsg('ok', '현재 위치에 핀이 있어요. 끌어서 옮기거나 다시 검색할 수 있어요.'); }
+    else { clearDraft(); geoMsg('', '식당 이름이나 주소로 찾으면 지도에 핀이 꽂혀요. 지도를 눌러서 정하거나 핀을 끌어서 옮길 수도 있어요.'); }
+    validate();
+    setTimeout(() => (r ? $('#fName') : $('#fSearch')).focus({ preventScroll: true }), 30);
+  }
+  function closeForm() { $('#panel').hidden = true; $('#mapHint').hidden = true; clearDraft(); editId = null; renderAll(); }
+  $('#btnAdd').onclick = () => openForm(null);
+  $('#panelClose').onclick = closeForm; $('#btnCancel').onclick = closeForm;
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#panel').hidden) closeForm(); });
+
+  $('#btnSave').onclick = () => {
+    const name = $('#fName').value.trim(); if (!name || !draft) return;
+    const menus = [...$('#fMenus').querySelectorAll('.mrow')].map(d => ({ name: d.querySelector('.mn').value.trim(), price: +d.querySelector('.mp').value.replace(/[^0-9]/g, '') || 0 })).filter(m => m.name);
+    const scores = {}; for (const [k] of SUBS) if (fScores[k]) scores[k] = fScores[k];
+    const prev = editId ? items.get(editId) : null;
+    const id = editId || 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    items.set(id, {
+      id, name, cat: fCat, rating: fRating, menus, scores,
+      note: $('#fNote').value.trim(), visited: $('#fVisit').value || '', address: $('#fAddr').value.trim(),
+      phone: pending.phone || '', placeUrl: pending.placeUrl || '',
+      lat: draft.lat, lng: draft.lng,
+      createdAt: prev ? prev.createdAt || Date.now() : Date.now(), updatedAt: Date.now()
+    });
+    persist();
+    toast(prev ? '‘' + name + '’ 정보를 저장했어요.' : '‘' + name + '’을(를) 지도에 추가했어요.');
+    closeForm();
+  };
+
+  /* ----- 백업 ----- */
+  $('#btnMore').onclick = () => { const m = $('#moreMenu'); m.hidden = !m.hidden; $('#btnMore').setAttribute('aria-expanded', !m.hidden); };
+  document.addEventListener('click', e => { if (!e.target.closest('.more')) $('#moreMenu').hidden = true; });
+  $('#btnExport').onclick = () => {
+    const data = { app: 'samsung-lunchmap', version: 1, exportedAt: new Date().toISOString(), items: [...items.values()] };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    const d = new Date(); const ymd = d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
+    a.href = URL.createObjectURL(blob); a.download = '삼성동점심지도_백업_' + ymd + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    $('#moreMenu').hidden = true;
+    toast(items.size + '곳을 백업 파일로 저장했어요.');
+  };
+  $('#btnImport').onclick = () => $('#importFile').click();
+  $('#importFile').addEventListener('change', async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    try {
+      const j = JSON.parse(await f.text());
+      const list = Array.isArray(j) ? j : j.items;
+      if (!Array.isArray(list)) throw new Error('형식');
+      let n = 0;
+      for (const r of list) if (r && r.id && r.name && isFinite(r.lat) && isFinite(r.lng)) { items.set(r.id, r); n++; }
+      persist(); renderAll(); $('#moreMenu').hidden = true;
+      toast(n ? n + '곳을 불러왔어요. 같은 식당은 백업 내용으로 바뀌었어요.' : '불러올 식당이 없는 파일이에요.');
+    } catch (err) { toast('백업 파일을 읽지 못했어요. 이 지도에서 저장한 .json 파일인지 확인해 주세요.'); }
+  });
+
+  $('#btnAdd').disabled = false;
+  renderAll();
+}
+})();
+</script>
+</body>
+</html>
